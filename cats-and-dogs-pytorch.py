@@ -1,0 +1,304 @@
+import numpy as np
+import pandas as pd
+import os
+import torch
+from torch import nn, optim
+from torch.utils import data
+from scipy.io import wavfile
+
+INPUT_ROOT = '../input'
+TRAIN_TEST_SPLIT_CSV = os.path.join(INPUT_ROOT, 'train_test_split.csv')
+AUDIO_DIR = os.path.join(INPUT_ROOT, 'cats_dogs')
+
+print(os.listdir("../input"))
+
+
+class CatsDogsDataset(data.Dataset):
+    def __init__(self, audio_root: str, csv_file: str, is_train: bool):
+        super().__init__()
+        self.audio_root = audio_root
+
+        prefix = 'train' if is_train else 'test'
+
+        df = pd.read_csv(csv_file)
+        train_cats = df[prefix + '_cat'].dropna()  # drop NaNs
+        train_dogs = df[prefix + '_dog'].dropna()  # drop NaNs
+
+        int16_max = np.iinfo(np.int16).max
+
+        data = []
+        for fname in train_cats:
+            sr, audio_data = wavfile.read(os.path.join(self.audio_root, fname))
+            audio_data = audio_data.astype(np.float16) / int16_max
+            length = audio_data.shape[0]
+            for i in range(0, length, 8000):
+                if i + 16000 >= length:
+                    break
+
+                segment = audio_data[i:i + 16000][np.newaxis, :]
+                max_abs = max(np.abs(segment.max()), np.abs(segment.min()))
+                segment /= max_abs
+                data.append((0, segment))
+
+        for fname in train_dogs:
+            sr, audio_data = wavfile.read(os.path.join(self.audio_root, fname))
+            audio_data = audio_data.astype(np.float16) / int16_max
+            length = audio_data.shape[0]
+            for i in range(0, length, 8000):
+                if i + 16000 >= length:
+                    break
+
+                segment = audio_data[i:i + 16000][np.newaxis, :]
+                max_abs = max(np.abs(segment.max()), np.abs(segment.min()))
+                segment /= max_abs
+                data.append((1, segment))
+        self.data = data
+
+    def __getitem__(self, idx):
+        return self.data[idx]
+
+    def __len__(self):
+        return len(self.data)
+
+
+class CatsDogsModel2(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Conv1d(in_channels=1, out_channels=8, kernel_size=5, bias=False),
+            nn.InstanceNorm1d(8),
+            nn.ReLU(inplace=True),
+
+            nn.Conv1d(in_channels=8, out_channels=8, kernel_size=5, stride=3, padding=1, groups=8, bias=False),
+            nn.InstanceNorm1d(8),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+
+            nn.Conv1d(in_channels=8, out_channels=8, kernel_size=5, stride=3, dilation=2, groups=8, bias=False),
+            nn.BatchNorm1d(8),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+
+            nn.Conv1d(in_channels=8, out_channels=16, kernel_size=3, stride=2, dilation=2, groups=8, bias=False),
+            nn.BatchNorm1d(16),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+
+            nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, stride=2, dilation=2, groups=16, bias=False),
+            nn.BatchNorm1d(32),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+
+            nn.Conv1d(in_channels=32, out_channels=32, kernel_size=3, stride=2, dilation=2, bias=False),
+            nn.BatchNorm1d(32),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+
+            nn.Conv1d(in_channels=32, out_channels=1, kernel_size=3, stride=2, dilation=2, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+        )
+
+        self.linear = nn.Sequential(
+            nn.Linear(in_features=108, out_features=128),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+            nn.Linear(128, 1),
+        )
+
+        self.apply(self.init_weights)
+
+    def forward(self, x):
+        x = self.net(x)
+        x = x.view(-1, 108)
+        return self.linear(x)
+
+    @staticmethod
+    def init_weights(m):
+        if isinstance(m, nn.Conv1d):
+            nn.init.kaiming_normal_(m.weight)
+
+
+class CatsDogsModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Conv1d(in_channels=1, out_channels=8, kernel_size=3, stride=2, bias=False),
+            nn.BatchNorm1d(8),
+            nn.ReLU(inplace=True),
+
+            nn.Conv1d(in_channels=8, out_channels=8, kernel_size=3, stride=2, bias=False),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm1d(8),
+            nn.Dropout(0.5),
+
+            nn.Conv1d(in_channels=8, out_channels=8, kernel_size=3, stride=2, bias=False),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm1d(8),
+            nn.Dropout(0.5),
+
+            nn.Conv1d(in_channels=8, out_channels=16, kernel_size=3, stride=2, bias=False),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm1d(16),
+            nn.Dropout(0.5),
+
+            nn.Conv1d(in_channels=16, out_channels=1, kernel_size=3, stride=3, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+        )
+        self.linear = nn.Sequential(
+            nn.Linear(in_features=333, out_features=100),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+            nn.Linear(100, 1),
+        )
+
+        self.apply(self.init_weights)
+
+    def forward(self, x):
+        x = self.net(x)
+        x = x.view(-1, 333)
+        return self.linear(x)
+
+    @staticmethod
+    def init_weights(m):
+        if isinstance(m, nn.Conv1d):
+            nn.init.kaiming_normal_(m.weight)
+
+
+class CatsDogsModel3(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.filter = nn.Sequential(
+            nn.Conv1d(in_channels=1, out_channels=32, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm1d(32),
+
+            nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm1d(64),
+            nn.Dropout(0.5),
+        )
+
+        # reducing dimension on the time axis
+        self.net = nn.Sequential(
+            nn.Conv2d(in_channels=1, out_channels=64, kernel_size=3, stride=(1, 2), padding=1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm2d(64),
+            nn.Dropout(0.5),
+
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=(1, 2), padding=1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm2d(64),
+            nn.Dropout(0.5),
+
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=(1, 2), padding=1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm2d(64),
+            nn.Dropout(0.5),
+
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=(1, 2), padding=1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm2d(64),
+            nn.Dropout(0.5),
+
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=(1, 2), padding=1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm2d(64),
+            nn.Dropout(0.5),
+
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=(1, 2), padding=(1, 2), bias=False),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm2d(64),
+            nn.Dropout(0.5),
+        )
+
+        # accumulating features
+        self.net2 = nn.Sequential(
+            nn.Conv2d(in_channels=64, out_channels=32, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm2d(32),
+            nn.Dropout(0.5),
+
+            nn.Conv2d(in_channels=32, out_channels=16, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm2d(16),
+            nn.Dropout(0.5),
+
+            nn.Conv2d(in_channels=16, out_channels=8, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm2d(8),
+            nn.Dropout(0.5),
+        )
+
+        self.linear = nn.Sequential(
+            nn.Linear(in_features=512, out_features=100),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+            nn.Linear(100, 1),
+        )
+
+        self.apply(self.init_weights)
+
+    def forward(self, x):
+        x = self.filter(x)
+        x = x.view(-1, 1, 64, 4000)
+        x = self.net(x)
+        x = self.net2(x)
+        x = x.view(-1, 512)
+        return self.linear(x)
+
+    @staticmethod
+    def init_weights(m):
+        if isinstance(m, nn.Conv1d):
+            nn.init.kaiming_normal_(m.weight)
+
+
+lr = 3e-4
+epoch = 200
+
+model = CatsDogsModel3()
+
+train_dataset = CatsDogsDataset(AUDIO_DIR, TRAIN_TEST_SPLIT_CSV, True)
+test_dataset = CatsDogsDataset(AUDIO_DIR, TRAIN_TEST_SPLIT_CSV, False)
+
+train_dataloader = data.DataLoader(
+    train_dataset, batch_size=64, shuffle=True, drop_last=True)
+test_dataloader = data.DataLoader(
+    test_dataset, batch_size=64, shuffle=True, drop_last=True)
+
+optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=0.01)
+loss_func = nn.BCEWithLogitsLoss()
+
+for i in range(epoch):
+    for targets, samples in train_dataloader:
+        targets = targets.type(torch.FloatTensor)
+        out = torch.squeeze(model(samples))
+        loss = loss_func(out, targets)
+
+        out_bool = torch.sigmoid(out) > 0.5
+        target_bool = targets > 0.5
+        pred = (out_bool == target_bool).type(torch.FloatTensor)
+        accuracy = pred.sum() / pred.numel()
+        print(f'epoch: {i}, loss: {loss}, accuracy: {accuracy}')
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+    test_accs = []
+    with torch.no_grad():
+        for targets, samples in test_dataloader:
+            targets = targets.type(torch.FloatTensor)
+            out = torch.squeeze(model(samples))
+            loss = loss_func(out, targets)
+
+            out_bool = torch.sigmoid(out) > 0.5
+            target_bool = targets > 0.5
+            pred = (out_bool == target_bool).type(torch.FloatTensor)
+            accuracy = pred.sum() / pred.numel()
+
+            test_accs.append(accuracy)
+            print(f'TEST: epoch: {i}, loss: {loss}, accuracy: {accuracy}')
+
+    print(f'Test Accuracy: {sum(test_accs) / len(test_accs)}')
