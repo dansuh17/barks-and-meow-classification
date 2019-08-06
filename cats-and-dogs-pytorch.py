@@ -38,11 +38,19 @@ class CatsDogsDataset(data.Dataset):
                     break
 
                 segment = audio_data[i:i + 16000][np.newaxis, :]
+
+                # ignore silent data
+                rms = np.sqrt(np.mean(segment**2))
+                if rms < 0.04:  # TODO: adjust threshold
+                    # wavfile.write(fname, sr, segment.T)
+                    continue
+
                 # normalize to zero mean
                 segment -= np.mean(segment)
                 # max normalize
                 max_abs = max(np.abs(segment.max()), np.abs(segment.min()))
                 segment /= max_abs
+
                 data.append((0, segment))
 
         for fname in train_dogs:
@@ -54,6 +62,13 @@ class CatsDogsDataset(data.Dataset):
                     break
 
                 segment = audio_data[i:i + 16000][np.newaxis, :]
+
+                # ignore silent data
+                rms = np.sqrt(np.mean(segment**2))
+                if rms < 0.04:  # TODO: adjust threshold
+                    # wavfile.write(fname, sr, segment.T)
+                    continue
+
                 # normalize to zero mean
                 segment -= np.mean(segment)
                 # max normalize
