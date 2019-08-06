@@ -280,7 +280,7 @@ class CatsDogsModel3(nn.Module):
 lr = 3e-4
 epoch = 200
 
-model = CatsDogsModel3()
+model = CatsDogsModel2()
 model = nn.DataParallel(model)
 model.to(DEVICE)
 
