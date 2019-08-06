@@ -33,7 +33,7 @@ class CatsDogsDataset(data.Dataset):
             # modify range to [-1, 1]
             audio_data = audio_data.astype(np.float16) / int16_max
             length = audio_data.shape[0]
-            for i in range(0, length, 8000):
+            for i in range(0, length, 4000):
                 if i + 16000 >= length:
                     break
 
@@ -57,7 +57,7 @@ class CatsDogsDataset(data.Dataset):
             sr, audio_data = wavfile.read(os.path.join(self.audio_root, fname))
             audio_data = audio_data.astype(np.float16) / int16_max
             length = audio_data.shape[0]
-            for i in range(0, length, 8000):
+            for i in range(0, length, 4000):
                 if i + 16000 >= length:
                     break
 
@@ -329,3 +329,6 @@ for i in range(epoch):
             print(f'TEST: epoch: {i}, loss: {loss}, accuracy: {accuracy}')
 
     print(f'Test Accuracy: {sum(test_accs) / len(test_accs)}')
+
+# save module
+torch.save(model.module.state_dict(), 'model.pt')
