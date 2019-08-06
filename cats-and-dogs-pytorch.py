@@ -173,11 +173,11 @@ class CatsDogsModel3(nn.Module):
         self.filter = nn.Sequential(
             nn.Conv1d(in_channels=1, out_channels=32, kernel_size=3, stride=2, padding=1, bias=False),
             nn.ReLU(inplace=True),
-            nn.BatchNorm1d(32),
+            nn.InstanceNorm1d(32),
 
             nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3, stride=2, padding=1, bias=False),
             nn.ReLU(inplace=True),
-            nn.BatchNorm1d(64),
+            nn.InstanceNorm1d(64),
             nn.Dropout(0.5),
         )
 
