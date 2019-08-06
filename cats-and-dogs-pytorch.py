@@ -9,6 +9,7 @@ from scipy.io import wavfile
 INPUT_ROOT = '../input'
 TRAIN_TEST_SPLIT_CSV = os.path.join(INPUT_ROOT, 'train_test_split.csv')
 AUDIO_DIR = os.path.join(INPUT_ROOT, 'cats_dogs')
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 print(os.listdir("../input"))
 
@@ -258,6 +259,8 @@ lr = 3e-4
 epoch = 200
 
 model = CatsDogsModel3()
+model = nn.DataParallel(model)
+model.to(DEVICE)
 
 train_dataset = CatsDogsDataset(AUDIO_DIR, TRAIN_TEST_SPLIT_CSV, True)
 test_dataset = CatsDogsDataset(AUDIO_DIR, TRAIN_TEST_SPLIT_CSV, False)
@@ -272,7 +275,8 @@ loss_func = nn.BCEWithLogitsLoss()
 
 for i in range(epoch):
     for targets, samples in train_dataloader:
-        targets = targets.type(torch.FloatTensor)
+        targets = targets.type(torch.FloatTensor).to(DEVICE)
+        samples = samples.to(DEVICE)
         out = torch.squeeze(model(samples))
         loss = loss_func(out, targets)
 
@@ -289,7 +293,8 @@ for i in range(epoch):
     test_accs = []
     with torch.no_grad():
         for targets, samples in test_dataloader:
-            targets = targets.type(torch.FloatTensor)
+            targets = targets.type(torch.FloatTensor).to(DEVICE)
+            samples = samples.to(DEVICE)
             out = torch.squeeze(model(samples))
             loss = loss_func(out, targets)
 
