@@ -30,6 +30,7 @@ class CatsDogsDataset(data.Dataset):
         data = []
         for fname in train_cats:
             sr, audio_data = wavfile.read(os.path.join(self.audio_root, fname))
+            # modify range to [-1, 1]
             audio_data = audio_data.astype(np.float16) / int16_max
             length = audio_data.shape[0]
             for i in range(0, length, 8000):
@@ -37,6 +38,9 @@ class CatsDogsDataset(data.Dataset):
                     break
 
                 segment = audio_data[i:i + 16000][np.newaxis, :]
+                # normalize to zero mean
+                segment -= np.mean(segment)
+                # max normalize
                 max_abs = max(np.abs(segment.max()), np.abs(segment.min()))
                 segment /= max_abs
                 data.append((0, segment))
@@ -50,6 +54,9 @@ class CatsDogsDataset(data.Dataset):
                     break
 
                 segment = audio_data[i:i + 16000][np.newaxis, :]
+                # normalize to zero mean
+                segment -= np.mean(segment)
+                # max normalize
                 max_abs = max(np.abs(segment.max()), np.abs(segment.min()))
                 segment /= max_abs
                 data.append((1, segment))
