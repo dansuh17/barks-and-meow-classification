@@ -42,7 +42,7 @@ class CatsDogsDataset(data.Dataset):
                 # ignore silent data
                 rms = np.sqrt(np.mean(segment**2))
                 if rms < 0.02:  # TODO: adjust threshold
-                    wavfile.write(f'rms{rms}' + fname, sr, segment.T)
+                    # wavfile.write(f'rms{rms}' + fname, sr, segment.T)
                     continue
 
                 # normalize to zero mean
@@ -67,7 +67,7 @@ class CatsDogsDataset(data.Dataset):
                 rms = np.sqrt(np.mean(segment**2))
 
                 if rms < 0.02:  # TODO: adjust threshold
-                    wavfile.write(f'rms{rms}' + fname, sr, segment.T)
+                    # wavfile.write(f'rms{rms}' + fname, sr, segment.T)
                     continue
 
                 # normalize to zero mean
@@ -278,44 +278,113 @@ class CatsDogsModel3(nn.Module):
             nn.init.kaiming_normal_(m.weight)
 
 
-lr = 3e-4
-epoch = 200
+class ResBlock1d(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int):
+        super().__init__()
+        self.conv1 = nn.Sequential(
+            nn.Conv1d(in_channels=in_channels, out_channels=in_channels,
+                      kernel_size=3, stride=1, padding=1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.InstanceNorm1d(in_channels),
+            nn.Dropout(0.5),
 
-model = CatsDogsModel2()
-model = nn.DataParallel(model)
-model.to(DEVICE)
+            nn.Conv1d(in_channels=in_channels, out_channels=out_channels,
+                      kernel_size=3, stride=1, padding=1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.InstanceNorm1d(out_channels),
+        )
 
-train_dataset = CatsDogsDataset(AUDIO_DIR, TRAIN_TEST_SPLIT_CSV, True)
-test_dataset = CatsDogsDataset(AUDIO_DIR, TRAIN_TEST_SPLIT_CSV, False)
+    def forward(self, x):
+        return torch.relu(x + self.conv1(x))
 
-train_dataloader = data.DataLoader(
-    train_dataset, batch_size=64, shuffle=True, drop_last=True)
-test_dataloader = data.DataLoader(
-    test_dataset, batch_size=64, shuffle=True, drop_last=True)
 
-optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=0.01)
-loss_func = nn.BCEWithLogitsLoss()
+class ResBlock1dDownSamp(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int):
+        super().__init__()
+        self.conv1 = nn.Sequential(
+            nn.Conv1d(in_channels=in_channels, out_channels=in_channels,
+                      kernel_size=3, stride=1, padding=1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.InstanceNorm1d(in_channels),
+            nn.Dropout(0.5),
 
-for i in range(epoch):
-    for targets, samples in train_dataloader:
-        targets = targets.type(torch.FloatTensor).to(DEVICE)
-        samples = samples.to(DEVICE)
-        out = torch.squeeze(model(samples))
-        loss = loss_func(out, targets)
+            nn.Conv1d(in_channels=in_channels, out_channels=out_channels,
+                      kernel_size=3, stride=2, padding=1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.InstanceNorm1d(out_channels),
+        )
 
-        out_bool = torch.sigmoid(out) > 0.5
-        target_bool = targets > 0.5
-        pred = (out_bool == target_bool).type(torch.FloatTensor)
-        accuracy = pred.sum() / pred.numel()
-        print(f'epoch: {i}, loss: {loss}, accuracy: {accuracy}')
+        self.downsampler = nn.Sequential(
+            # TODO: dilated?
+            nn.AvgPool1d(kernel_size=3, stride=2, padding=1),
+            nn.Conv1d(in_channels, out_channels, 1, bias=False)
+        )
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+    def forward(self, x):
+        return torch.relu(self.downsampler(x) + self.conv1(x))
 
-    test_accs = []
-    with torch.no_grad():
-        for targets, samples in test_dataloader:
+
+class CatsDogsRes(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.filter = nn.Sequential(
+            ResBlock1d(1, 4),
+            ResBlock1dDownSamp(4, 8),
+            ResBlock1d(8, 8),
+            ResBlock1dDownSamp(8, 8),
+            ResBlock1d(8, 8),
+            ResBlock1dDownSamp(8, 8),
+            ResBlock1d(8, 8),
+            ResBlock1dDownSamp(8, 16),
+            ResBlock1d(16, 16),
+            ResBlock1dDownSamp(16, 16),
+            ResBlock1d(16, 16),
+            ResBlock1dDownSamp(16, 32),
+            ResBlock1d(32, 32),
+            ResBlock1dDownSamp(32, 32),
+        )
+
+        self.linear = nn.Sequential(
+            nn.Linear(in_features=4000, out_features=1000),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+            nn.Linear(in_features=1000, out_features=1),
+        )
+
+        self.apply(self.init_weights)
+
+    def forward(self, x):
+        x = self.filter(x)
+        x = x.view(-1, 4000)
+        return self.linear(x)
+
+    @staticmethod
+    def init_weights(m):
+        if isinstance(m, nn.Conv1d):
+            nn.init.kaiming_normal_(m.weight)
+
+
+if __name__ == '__main__':
+    lr = 3e-4
+    epoch = 200
+
+    model = CatsDogsRes()
+    model = nn.DataParallel(model)
+    model.to(DEVICE)
+
+    train_dataset = CatsDogsDataset(AUDIO_DIR, TRAIN_TEST_SPLIT_CSV, True)
+    test_dataset = CatsDogsDataset(AUDIO_DIR, TRAIN_TEST_SPLIT_CSV, False)
+
+    train_dataloader = data.DataLoader(
+        train_dataset, batch_size=64, shuffle=True, drop_last=True)
+    test_dataloader = data.DataLoader(
+        test_dataset, batch_size=64, shuffle=True, drop_last=True)
+
+    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=0.01)
+    loss_func = nn.BCEWithLogitsLoss()
+
+    for i in range(epoch):
+        for targets, samples in train_dataloader:
             targets = targets.type(torch.FloatTensor).to(DEVICE)
             samples = samples.to(DEVICE)
             out = torch.squeeze(model(samples))
@@ -325,12 +394,30 @@ for i in range(epoch):
             target_bool = targets > 0.5
             pred = (out_bool == target_bool).type(torch.FloatTensor)
             accuracy = pred.sum() / pred.numel()
+            print(f'epoch: {i}, loss: {loss}, accuracy: {accuracy}')
 
-            test_accs.append(accuracy)
-            print(f'TEST: epoch: {i}, loss: {loss}, accuracy: {accuracy}')
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-    print(f'Test Accuracy: {sum(test_accs) / len(test_accs)}')
+        test_accs = []
+        with torch.no_grad():
+            for targets, samples in test_dataloader:
+                targets = targets.type(torch.FloatTensor).to(DEVICE)
+                samples = samples.to(DEVICE)
+                out = torch.squeeze(model(samples))
+                loss = loss_func(out, targets)
 
-# save module
-print('Saving model')
-torch.save(model.module.state_dict(), 'model.pt')
+                out_bool = torch.sigmoid(out) > 0.5
+                target_bool = targets > 0.5
+                pred = (out_bool == target_bool).type(torch.FloatTensor)
+                accuracy = pred.sum() / pred.numel()
+
+                test_accs.append(accuracy)
+                print(f'TEST: epoch: {i}, loss: {loss}, accuracy: {accuracy}')
+
+        print(f'Test Accuracy: {sum(test_accs) / len(test_accs)}')
+
+    # save module
+    print('Saving model')
+    torch.save(model.module.state_dict(), 'model.pt')
