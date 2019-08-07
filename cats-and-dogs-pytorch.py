@@ -41,8 +41,8 @@ class CatsDogsDataset(data.Dataset):
 
                 # ignore silent data
                 rms = np.sqrt(np.mean(segment**2))
-                if rms < 0.04:  # TODO: adjust threshold
-                    # wavfile.write(fname, sr, segment.T)
+                if rms < 0.02:  # TODO: adjust threshold
+                    wavfile.write(f'rms{rms}' + fname, sr, segment.T)
                     continue
 
                 # normalize to zero mean
@@ -65,8 +65,9 @@ class CatsDogsDataset(data.Dataset):
 
                 # ignore silent data
                 rms = np.sqrt(np.mean(segment**2))
-                if rms < 0.04:  # TODO: adjust threshold
-                    # wavfile.write(fname, sr, segment.T)
+
+                if rms < 0.02:  # TODO: adjust threshold
+                    wavfile.write(f'rms{rms}' + fname, sr, segment.T)
                     continue
 
                 # normalize to zero mean
