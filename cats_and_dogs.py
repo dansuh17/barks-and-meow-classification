@@ -332,4 +332,5 @@ for i in range(epoch):
     print(f'Test Accuracy: {sum(test_accs) / len(test_accs)}')
 
 # save module
+print('Saving model')
 torch.save(model.module.state_dict(), 'model.pt')
