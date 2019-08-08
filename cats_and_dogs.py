@@ -364,11 +364,45 @@ class CatsDogsRes(nn.Module):
             nn.init.kaiming_normal_(m.weight)
 
 
+class CatsDogsResSmall(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.filter = nn.Sequential(
+            ResBlock1d(1, 8),
+            ResBlock1dDownSamp(8, 8),
+            ResBlock1dDownSamp(8, 8),
+            ResBlock1dDownSamp(8, 16),
+            ResBlock1dDownSamp(16, 16),
+            ResBlock1dDownSamp(16, 32),
+            ResBlock1dDownSamp(32, 32),
+            ResBlock1dDownSamp(32, 32),
+        )
+
+        self.linear = nn.Sequential(
+            nn.Linear(in_features=4000, out_features=1000),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+            nn.Linear(in_features=1000, out_features=1),
+        )
+
+        self.apply(self.init_weights)
+
+    def forward(self, x):
+        x = self.filter(x)
+        x = x.view(-1, 4000)
+        return self.linear(x)
+
+    @staticmethod
+    def init_weights(m):
+        if isinstance(m, nn.Conv1d):
+            nn.init.kaiming_normal_(m.weight)
+
+
 if __name__ == '__main__':
-    lr = 3e-4
+    lr = 1e-4
     epoch = 200
 
-    model = CatsDogsRes()
+    model = CatsDogsResSmall()
     model = nn.DataParallel(model)
     model.to(DEVICE)
 
