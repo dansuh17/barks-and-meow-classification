@@ -15,6 +15,9 @@ print(os.listdir("../input"))
 
 
 class CatsDogsDataset(data.Dataset):
+    LABEL_CAT = 0
+    LABEL_DOG = 1
+
     def __init__(self, audio_root: str, csv_file: str, is_train: bool):
         super().__init__()
         self.audio_root = audio_root
@@ -51,7 +54,7 @@ class CatsDogsDataset(data.Dataset):
                 max_abs = max(np.abs(segment.max()), np.abs(segment.min()))
                 segment /= max_abs
 
-                data.append((0, segment))
+                data.append((self.LABEL_CAT, segment))
 
         for fname in train_dogs:
             sr, audio_data = wavfile.read(os.path.join(self.audio_root, fname))
@@ -75,7 +78,7 @@ class CatsDogsDataset(data.Dataset):
                 # max normalize
                 max_abs = max(np.abs(segment.max()), np.abs(segment.min()))
                 segment /= max_abs
-                data.append((1, segment))
+                data.append((self.LABEL_DOG, segment))
         self.data = data
 
     def __getitem__(self, idx):
@@ -290,9 +293,7 @@ class ResBlock1d(nn.Module):
 
             nn.Conv1d(in_channels=in_channels, out_channels=out_channels,
                       kernel_size=3, stride=1, padding=1, bias=False),
-            nn.ELU(inplace=True),
             nn.InstanceNorm1d(out_channels),
-            nn.Dropout(0.5),
         )
 
         self.activation = nn.ELU(inplace=True)
@@ -313,7 +314,6 @@ class ResBlock1dDownSamp(nn.Module):
 
             nn.Conv1d(in_channels=in_channels, out_channels=out_channels,
                       kernel_size=3, stride=2, padding=1, bias=False),
-            nn.ELU(inplace=True),
             nn.BatchNorm1d(out_channels),
         )
 
@@ -334,18 +334,31 @@ class CatsDogsRes(nn.Module):
         super().__init__()
         self.filter = nn.Sequential(
             ResBlock1d(1, 4),
+            nn.Dropout(0.7),
             ResBlock1dDownSamp(4, 8),
+            nn.Dropout(0.7),
             ResBlock1d(8, 8),
+            nn.Dropout(0.7),
             ResBlock1dDownSamp(8, 8),
+            nn.Dropout(0.7),
             ResBlock1d(8, 8),
+            nn.Dropout(0.7),
             ResBlock1dDownSamp(8, 8),
+            nn.Dropout(0.7),
             ResBlock1d(8, 8),
+            nn.Dropout(0.7),
             ResBlock1dDownSamp(8, 16),
+            nn.Dropout(0.7),
             ResBlock1d(16, 16),
+            nn.Dropout(0.7),
             ResBlock1dDownSamp(16, 16),
+            nn.Dropout(0.7),
             ResBlock1d(16, 16),
+            nn.Dropout(0.7),
             ResBlock1dDownSamp(16, 32),
+            nn.Dropout(0.7),
             ResBlock1d(32, 32),
+            nn.Dropout(0.7),
             ResBlock1dDownSamp(32, 32),
         )
 
@@ -407,9 +420,7 @@ if __name__ == '__main__':
     lr = 1e-4
     epoch = 200
 
-    model = CatsDogsRes()
-    model = nn.DataParallel(model)
-    model.to(DEVICE)
+    model = nn.DataParallel(CatsDogsRes()).to(DEVICE)
 
     train_dataset = CatsDogsDataset(AUDIO_DIR, TRAIN_TEST_SPLIT_CSV, True)
     test_dataset = CatsDogsDataset(AUDIO_DIR, TRAIN_TEST_SPLIT_CSV, False)
@@ -454,6 +465,15 @@ if __name__ == '__main__':
 
                 test_accs.append(accuracy)
                 print(f'TEST: epoch: {i}, loss: {loss}, accuracy: {accuracy}')
+
+                # save any that are mispredicted
+                if i == epoch - 1:
+                    for target_class, samp, pred_score in zip(targets, samples, out):
+                        pred_class = 1 if pred_score > 0.5 else 0
+                        if target_class != pred_class:
+                            as_ = 'cat' if pred_class == CatsDogsDataset.LABEL_CAT else 'dog'
+                            wavfile.write(f'mispred_{as_}_{pred_score:04f}.wav', 16000, samp.T)
+                            print(f'misprediction ({as_}): {pred_score:04f}')
 
         print(f'Test Accuracy: {sum(test_accs) / len(test_accs)}')
 
