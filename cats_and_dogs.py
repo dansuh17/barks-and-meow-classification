@@ -284,19 +284,21 @@ class ResBlock1d(nn.Module):
         self.conv1 = nn.Sequential(
             nn.Conv1d(in_channels=in_channels, out_channels=in_channels,
                       kernel_size=3, stride=1, padding=1, bias=False),
-            nn.ReLU(inplace=True),
+            nn.ELU(inplace=True),
             nn.InstanceNorm1d(in_channels),
             nn.Dropout(0.5),
 
             nn.Conv1d(in_channels=in_channels, out_channels=out_channels,
                       kernel_size=3, stride=1, padding=1, bias=False),
-            nn.ReLU(inplace=True),
+            nn.ELU(inplace=True),
             nn.InstanceNorm1d(out_channels),
             nn.Dropout(0.5),
         )
 
+        self.activation = nn.ELU(inplace=True)
+
     def forward(self, x):
-        return torch.relu(x + self.conv1(x))
+        return self.activation(x + self.conv1(x))
 
 
 class ResBlock1dDownSamp(nn.Module):
@@ -305,15 +307,14 @@ class ResBlock1dDownSamp(nn.Module):
         self.conv1 = nn.Sequential(
             nn.Conv1d(in_channels=in_channels, out_channels=in_channels,
                       kernel_size=3, stride=1, padding=1, bias=False),
-            nn.ReLU(inplace=True),
+            nn.ELU(inplace=True),
             nn.InstanceNorm1d(in_channels),
             nn.Dropout(0.5),
 
             nn.Conv1d(in_channels=in_channels, out_channels=out_channels,
                       kernel_size=3, stride=2, padding=1, bias=False),
-            nn.ReLU(inplace=True),
+            nn.ELU(inplace=True),
             nn.InstanceNorm1d(out_channels),
-            nn.Dropout(0.5),
         )
 
         self.downsampler = nn.Sequential(
@@ -322,8 +323,10 @@ class ResBlock1dDownSamp(nn.Module):
             nn.Conv1d(in_channels, out_channels, 1, bias=False)
         )
 
+        self.activation = nn.ELU(inplace=True)
+
     def forward(self, x):
-        return torch.relu(self.downsampler(x) + self.conv1(x))
+        return self.activation(self.downsampler(x) + self.conv1(x))
 
 
 class CatsDogsRes(nn.Module):
@@ -404,7 +407,7 @@ if __name__ == '__main__':
     lr = 1e-4
     epoch = 200
 
-    model = CatsDogsResSmall()
+    model = CatsDogsRes()
     model = nn.DataParallel(model)
     model.to(DEVICE)
 
