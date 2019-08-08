@@ -308,13 +308,13 @@ class ResBlock1dDownSamp(nn.Module):
             nn.Conv1d(in_channels=in_channels, out_channels=in_channels,
                       kernel_size=3, stride=1, padding=1, bias=False),
             nn.ELU(inplace=True),
-            nn.InstanceNorm1d(in_channels),
+            nn.BatchNorm1d(in_channels),
             nn.Dropout(0.5),
 
             nn.Conv1d(in_channels=in_channels, out_channels=out_channels,
                       kernel_size=3, stride=2, padding=1, bias=False),
             nn.ELU(inplace=True),
-            nn.InstanceNorm1d(out_channels),
+            nn.BatchNorm1d(out_channels),
         )
 
         self.downsampler = nn.Sequential(
