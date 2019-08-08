@@ -292,6 +292,7 @@ class ResBlock1d(nn.Module):
                       kernel_size=3, stride=1, padding=1, bias=False),
             nn.ReLU(inplace=True),
             nn.InstanceNorm1d(out_channels),
+            nn.Dropout(0.5),
         )
 
     def forward(self, x):
@@ -312,6 +313,7 @@ class ResBlock1dDownSamp(nn.Module):
                       kernel_size=3, stride=2, padding=1, bias=False),
             nn.ReLU(inplace=True),
             nn.InstanceNorm1d(out_channels),
+            nn.Dropout(0.5),
         )
 
         self.downsampler = nn.Sequential(
