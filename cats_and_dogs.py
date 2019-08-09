@@ -461,7 +461,7 @@ if __name__ == '__main__':
                 # save any that are mispredicted
                 if i == epoch - 1:
                     for target_class, samp, pred_score in zip(targets, samples, out):
-                        pred_class = 1 if pred_score > 0.5 else 0
+                        pred_class = 1 if pred_score > 0 else 0
                         if target_class != pred_class:
                             as_ = 'cat' if pred_class == CatsDogsDataset.LABEL_CAT else 'dog'
                             wavfile.write(f'mispred_{as_}_{pred_score:04f}.wav', 16000, samp.cpu().detach().numpy().T)
