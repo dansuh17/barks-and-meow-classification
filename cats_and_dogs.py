@@ -405,6 +405,8 @@ class CatsDogsResSmall(nn.Module):
         if isinstance(m, nn.Conv1d):
             nn.init.kaiming_normal_(m.weight)
 
+# TODO: densenet, squeeze-and-excite, shift-invariant networks
+
 
 if __name__ == '__main__':
     lr = 1e-4
@@ -462,7 +464,7 @@ if __name__ == '__main__':
                         pred_class = 1 if pred_score > 0.5 else 0
                         if target_class != pred_class:
                             as_ = 'cat' if pred_class == CatsDogsDataset.LABEL_CAT else 'dog'
-                            wavfile.write(f'mispred_{as_}_{pred_score:04f}.wav', 16000, samp.T)
+                            wavfile.write(f'mispred_{as_}_{pred_score:04f}.wav', 16000, samp.cpu().detach().numpy().T)
                             print(f'misprediction ({as_}): {pred_score:04f}')
 
         print(f'Test Accuracy: {sum(test_accs) / len(test_accs)}')
