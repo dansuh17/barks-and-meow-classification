@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import numpy as np
 import pandas as pd
 import os
@@ -405,10 +406,117 @@ class CatsDogsResSmall(nn.Module):
         if isinstance(m, nn.Conv1d):
             nn.init.kaiming_normal_(m.weight)
 
+
+class DenseLayer1d(nn.Sequential):
+    def __init__(self, in_features: int, bottleneck_factor: int, growth_rate: int):
+        super().__init__()
+        bottleneck_size = bottleneck_factor * growth_rate
+        self.add_module('norm1', nn.BatchNorm1d(in_features))
+        self.add_module('relu1', nn.ReLU(inplace=True))
+        self.add_module('conv1', nn.Conv1d(
+            in_channels=in_features, out_channels=bottleneck_size,
+            kernel_size=1, stride=1, bias=False))
+        self.add_module('norm2', nn.BatchNorm1d(bottleneck_size))
+        self.add_module('relu2', nn.ReLU(inplace=True))
+        self.add_module('conv2', nn.Conv1d(bottleneck_size, growth_rate, 3, 1, 1, bias=False))
+        self.add_module('drop', nn.Dropout(p=0.7))
+
+    def forward(self, *in_features):
+        cat_features = torch.cat(in_features, dim=1)
+        x = self.norm1(cat_features)
+        x = self.relu1(x)
+        x = self.conv1(x)
+        x = self.norm2(x)
+        x = self.relu2(x)
+        x = self.conv2(x)
+        return self.drop(x)
+
+
+class DenseBlock1d(nn.Module):
+    def __init__(self, in_features: int, bottleneck_factor: int, growth_rate: int):
+        super().__init__()
+        self.add_module('denselayer1',
+                DenseLayer1d(in_features, bottleneck_factor, growth_rate))
+        self.add_module('denselayer2',
+                DenseLayer1d(in_features + growth_rate, bottleneck_factor, growth_rate))
+        self.add_module('denselayer3',
+                DenseLayer1d(in_features + growth_rate*2, bottleneck_factor, growth_rate))
+        self.add_module('denselayer4',
+                DenseLayer1d(in_features + growth_rate*3, bottleneck_factor, growth_rate))
+
+    def forward(self, first_features):
+        features = [first_features]
+        for _, layer in self.named_children():
+            new_feature = layer(*features)
+            features.append(new_feature)
+        return torch.cat(features, dim=1)
+
+
+class DenseTransitionLayer1d(nn.Sequential):
+    def __init__(self, in_features: int, out_features: int):
+        super().__init__()
+        self.add_module('norm', nn.BatchNorm1d(in_features))
+        self.add_module('relu', nn.ReLU(inplace=True))
+        self.add_module('conv', nn.Conv1d(
+            in_channels=in_features, out_channels=out_features,
+            kernel_size=1, stride=1, bias=False))
+        self.add_module('pool', nn.AvgPool1d(kernel_size=3, stride=2, padding=1))  # low pass filter
+
+
+class CatsDogsDenseNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        # conv - norm - relu - pool
+        # dense block - 6, 12, 24, 16
+        # dense layer =
+        # torch.cat(prev_features, dim=1) -> norm -> relu -> conv (1 x 1) -> norm -> relu -> conv (3 x 3, padding=1) -> dropout
+        # final batch norm
+        # classifier: linear
+        self.net = nn.Sequential(OrderedDict([
+            ('conv0', nn.Conv1d(1, 8, kernel_size=3, stride=2, padding=1, bias=False)),
+            ('norm0', nn.BatchNorm1d(8)),
+            ('relu0', nn.ReLU(inplace=True)),
+            ('pool0', nn.MaxPool1d(kernel_size=3, stride=2, padding=1)),
+        ]))
+
+        self.net.add_module('dense1', DenseBlock1d(in_features=8, bottleneck_factor=8, growth_rate=16)),
+        self.net.add_module('transition1', DenseTransitionLayer1d(in_features=72, out_features=36))
+        self.net.add_module('dense2', DenseBlock1d(36, 8, 16))
+        self.net.add_module('transition2', DenseTransitionLayer1d(100, 36))
+        self.net.add_module('dense3', DenseBlock1d(36, 8, 8))
+        self.net.add_module('transition3', DenseTransitionLayer1d(68, 1))
+
+        self.linear = nn.Linear(in_features=500, out_features=1)
+
+        self.apply(self.weight_init)
+
+    def forward(self, x):
+        x = self.net(x)
+        x = torch.flatten(x, 1)  # reduce dimension
+        return self.linear(x)
+
+    @staticmethod
+    def weight_init(m: nn.Module):
+        if isinstance(m, nn.Conv1d):
+            nn.init.kaiming_normal_(m.weight)
+        elif isinstance(m, nn.BatchNorm1d):
+            nn.init.constant_(m.weight, 1)
+            nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.Linear):
+            nn.init.constant_(m.bias, 0)
+
+
 # TODO: densenet, squeeze-and-excite, shift-invariant networks
 
 
 if __name__ == '__main__':
+    # dummy = torch.rand(10, 1, 16000)
+    # m = CatsDogsDenseNet()
+    # out = m(dummy)
+    # print(out.size())
+
+    # import sys
+    # sys.exit(1)
     lr = 1e-4
     epoch = 200
 

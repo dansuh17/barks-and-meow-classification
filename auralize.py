@@ -50,7 +50,6 @@ if __name__ == '__main__':
     plt.title('dog')
     plt.show()
 
-
     sys.exit(1)
 
     params = list(model.parameters())
