@@ -520,7 +520,7 @@ if __name__ == '__main__':
     lr = 1e-4
     epoch = 200
 
-    model = nn.DataParallel(CatsDogsRes()).to(DEVICE)
+    model = nn.DataParallel(CatsDogsDenseNet()).to(DEVICE)
 
     train_dataset = CatsDogsDataset(AUDIO_DIR, TRAIN_TEST_SPLIT_CSV, True)
     test_dataset = CatsDogsDataset(AUDIO_DIR, TRAIN_TEST_SPLIT_CSV, False)
