@@ -460,6 +460,7 @@ class DenseTransitionLayer1d(nn.Sequential):
         self.add_module('conv', nn.Conv1d(
             in_channels=in_features, out_channels=out_features,
             kernel_size=1, stride=1, bias=False))
+        self.add_module('dropout', nn.Dropout(p=0.5))
         self.add_module('pool', nn.AvgPool1d(kernel_size=3, stride=2, padding=1))  # low pass filter
 
 
@@ -479,11 +480,11 @@ class CatsDogsDenseNet(nn.Module):
             ('pool0', nn.MaxPool1d(kernel_size=3, stride=2, padding=1)),
         ]))
 
-        self.net.add_module('dense1', DenseBlock1d(in_features=8, bottleneck_factor=8, growth_rate=16)),
-        self.net.add_module('transition1', DenseTransitionLayer1d(in_features=72, out_features=36))
-        self.net.add_module('dense2', DenseBlock1d(36, 8, 16))
-        self.net.add_module('transition2', DenseTransitionLayer1d(100, 36))
-        self.net.add_module('dense3', DenseBlock1d(36, 8, 8))
+        self.net.add_module('dense1', DenseBlock1d(in_features=8, bottleneck_factor=4, growth_rate=8)),
+        self.net.add_module('transition1', DenseTransitionLayer1d(in_features=40, out_features=36))
+        self.net.add_module('dense2', DenseBlock1d(36, 4, 8))
+        self.net.add_module('transition2', DenseTransitionLayer1d(68, 36))
+        self.net.add_module('dense3', DenseBlock1d(36, 4, 8))
         self.net.add_module('transition3', DenseTransitionLayer1d(68, 1))
 
         self.linear = nn.Linear(in_features=500, out_features=1)
