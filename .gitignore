@@ -3,3 +3,13 @@ tags
 
 ## audio
 *.wav
+
+## python
+__pycache__/
+
+## pytorch
+# model files
+*.pt
+
+## kaggle
+kernel-metadata.json
