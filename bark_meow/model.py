@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import torch
 from torch import nn
 
@@ -420,3 +421,11 @@ class CatsDogsDenseNet(nn.Module):
             nn.init.constant_(m.bias, 0)
 
 # TODO: densenet, squeeze-and-excite, shift-invariant networks
+
+
+if __name__ == '__main__':
+    dummy = torch.randn(5, 1, 16000)
+    net = CatsDogsDenseNet()
+    output = net(dummy)
+    out_size = output.size()
+    assert(out_size == (5, 1))

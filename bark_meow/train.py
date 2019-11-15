@@ -1,11 +1,10 @@
-from collections import OrderedDict
-import numpy as np
-import pandas as pd
 import os
 import torch
 from torch import nn, optim
 from torch.utils import data
 from scipy.io import wavfile
+from .model import CatsDogsDenseNet
+from .dataset import CatsDogsDataset
 
 INPUT_ROOT = '../input'
 TRAIN_TEST_SPLIT_CSV = os.path.join(INPUT_ROOT, 'train_test_split.csv')

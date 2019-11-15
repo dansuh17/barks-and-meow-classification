@@ -1,5 +1,8 @@
+import os
 from torch.utils import data
 import numpy as np
+import pandas as pd
+from scipy.io import wavfile
 
 
 class CatsDogsDataset(data.Dataset):

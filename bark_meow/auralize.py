@@ -1,10 +1,9 @@
 import torch
 from torch import optim
 import sys
-from bark_meow.train import CatsDogsModel3
+from .model import CatsDogsModel3
 import numpy as np
 import matplotlib.pyplot as plt
-import librosa
 import librosa.display
 from scipy.io import wavfile
 
