@@ -4,6 +4,15 @@ from torch import nn
 
 
 class CatsDogsModel2(nn.Module):
+    """
+    >>> dummy_input = torch.randn(5, 1, 16000)
+    >>> dummy_input.size()
+    torch.Size([5, 1, 16000])
+    >>> net = CatsDogsModel2()
+    >>> test_output = net(dummy_input)
+    >>> test_output.size()
+    torch.Size([5, 1])
+    """
     def __init__(self):
         super().__init__()
         self.net = nn.Sequential(
@@ -62,6 +71,15 @@ class CatsDogsModel2(nn.Module):
 
 
 class CatsDogsModel(nn.Module):
+    """
+    >>> dummy_input = torch.randn(5, 1, 16000)
+    >>> dummy_input.size()
+    torch.Size([5, 1, 16000])
+    >>> net = CatsDogsModel()
+    >>> test_output = net(dummy_input)
+    >>> test_output.size()
+    torch.Size([5, 1])
+    """
     def __init__(self):
         super().__init__()
         self.net = nn.Sequential(
@@ -109,6 +127,15 @@ class CatsDogsModel(nn.Module):
 
 
 class CatsDogsModel3(nn.Module):
+    """
+    >>> dummy_input = torch.randn(5, 1, 16000)
+    >>> dummy_input.size()
+    torch.Size([5, 1, 16000])
+    >>> net = CatsDogsModel3()
+    >>> test_output = net(dummy_input)
+    >>> test_output.size()
+    torch.Size([5, 1])
+    """
     def __init__(self):
         super().__init__()
         self.filter = nn.Sequential(
@@ -288,6 +315,15 @@ class CatsDogsRes(nn.Module):
 
 
 class CatsDogsResSmall(nn.Module):
+    """
+    >>> dummy_input = torch.randn(5, 1, 16000)
+    >>> dummy_input.size()
+    torch.Size([5, 1, 16000])
+    >>> net = CatsDogsResSmall()
+    >>> test_output = net(dummy_input)
+    >>> test_output.size()
+    torch.Size([5, 1])
+    """
     def __init__(self):
         super().__init__()
         self.filter = nn.Sequential(
@@ -435,9 +471,3 @@ class CatsDogsDenseNet(nn.Module):
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
-
-    dummy = torch.randn(5, 1, 16000)
-    net = CatsDogsDenseNet()
-    output = net(dummy)
-    out_size = output.size()
-    assert(out_size == (5, 1))

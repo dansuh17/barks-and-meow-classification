@@ -15,13 +15,6 @@ print(os.listdir("../input"))
 
 
 if __name__ == '__main__':
-    # dummy = torch.rand(10, 1, 16000)
-    # m = CatsDogsDenseNet()
-    # out = m(dummy)
-    # print(out.size())
-
-    # import sys
-    # sys.exit(1)
     lr = 1e-4
     epoch = 200
 
