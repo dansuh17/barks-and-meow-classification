@@ -1,92 +1,5 @@
-from collections import OrderedDict
-import numpy as np
-import pandas as pd
-import os
 import torch
-from torch import nn, optim
-from torch.utils import data
-from scipy.io import wavfile
-
-INPUT_ROOT = '../input'
-TRAIN_TEST_SPLIT_CSV = os.path.join(INPUT_ROOT, 'train_test_split.csv')
-AUDIO_DIR = os.path.join(INPUT_ROOT, 'cats_dogs')
-DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-print(os.listdir("../input"))
-
-
-class CatsDogsDataset(data.Dataset):
-    LABEL_CAT = 0
-    LABEL_DOG = 1
-
-    def __init__(self, audio_root: str, csv_file: str, is_train: bool):
-        super().__init__()
-        self.audio_root = audio_root
-
-        prefix = 'train' if is_train else 'test'
-
-        df = pd.read_csv(csv_file)
-        train_cats = df[prefix + '_cat'].dropna()  # drop NaNs
-        train_dogs = df[prefix + '_dog'].dropna()  # drop NaNs
-
-        int16_max = np.iinfo(np.int16).max
-
-        data = []
-        for fname in train_cats:
-            sr, audio_data = wavfile.read(os.path.join(self.audio_root, fname))
-            # modify range to [-1, 1]
-            audio_data = audio_data.astype(np.float16) / int16_max
-            length = audio_data.shape[0]
-            for i in range(0, length, 4000):
-                if i + 16000 >= length:
-                    break
-
-                segment = audio_data[i:i + 16000][np.newaxis, :]
-
-                # ignore silent data
-                rms = np.sqrt(np.mean(segment**2))
-                if rms < 0.02:  # TODO: adjust threshold
-                    # wavfile.write(f'rms{rms}' + fname, sr, segment.T)
-                    continue
-
-                # normalize to zero mean
-                segment -= np.mean(segment)
-                # max normalize
-                max_abs = max(np.abs(segment.max()), np.abs(segment.min()))
-                segment /= max_abs
-
-                data.append((self.LABEL_CAT, segment))
-
-        for fname in train_dogs:
-            sr, audio_data = wavfile.read(os.path.join(self.audio_root, fname))
-            audio_data = audio_data.astype(np.float16) / int16_max
-            length = audio_data.shape[0]
-            for i in range(0, length, 4000):
-                if i + 16000 >= length:
-                    break
-
-                segment = audio_data[i:i + 16000][np.newaxis, :]
-
-                # ignore silent data
-                rms = np.sqrt(np.mean(segment**2))
-
-                if rms < 0.02:  # TODO: adjust threshold
-                    # wavfile.write(f'rms{rms}' + fname, sr, segment.T)
-                    continue
-
-                # normalize to zero mean
-                segment -= np.mean(segment)
-                # max normalize
-                max_abs = max(np.abs(segment.max()), np.abs(segment.min()))
-                segment /= max_abs
-                data.append((self.LABEL_DOG, segment))
-        self.data = data
-
-    def __getitem__(self, idx):
-        return self.data[idx]
-
-    def __len__(self):
-        return len(self.data)
+from torch import nn
 
 
 class CatsDogsModel2(nn.Module):
@@ -436,13 +349,13 @@ class DenseBlock1d(nn.Module):
     def __init__(self, in_features: int, bottleneck_factor: int, growth_rate: int):
         super().__init__()
         self.add_module('denselayer1',
-                DenseLayer1d(in_features, bottleneck_factor, growth_rate))
+                        DenseLayer1d(in_features, bottleneck_factor, growth_rate))
         self.add_module('denselayer2',
-                DenseLayer1d(in_features + growth_rate, bottleneck_factor, growth_rate))
+                        DenseLayer1d(in_features + growth_rate, bottleneck_factor, growth_rate))
         self.add_module('denselayer3',
-                DenseLayer1d(in_features + growth_rate*2, bottleneck_factor, growth_rate))
+                        DenseLayer1d(in_features + growth_rate*2, bottleneck_factor, growth_rate))
         self.add_module('denselayer4',
-                DenseLayer1d(in_features + growth_rate*3, bottleneck_factor, growth_rate))
+                        DenseLayer1d(in_features + growth_rate*3, bottleneck_factor, growth_rate))
 
     def forward(self, first_features):
         features = [first_features]
@@ -506,78 +419,4 @@ class CatsDogsDenseNet(nn.Module):
         elif isinstance(m, nn.Linear):
             nn.init.constant_(m.bias, 0)
 
-
 # TODO: densenet, squeeze-and-excite, shift-invariant networks
-
-
-if __name__ == '__main__':
-    # dummy = torch.rand(10, 1, 16000)
-    # m = CatsDogsDenseNet()
-    # out = m(dummy)
-    # print(out.size())
-
-    # import sys
-    # sys.exit(1)
-    lr = 1e-4
-    epoch = 200
-
-    model = nn.DataParallel(CatsDogsDenseNet()).to(DEVICE)
-
-    train_dataset = CatsDogsDataset(AUDIO_DIR, TRAIN_TEST_SPLIT_CSV, True)
-    test_dataset = CatsDogsDataset(AUDIO_DIR, TRAIN_TEST_SPLIT_CSV, False)
-
-    train_dataloader = data.DataLoader(
-        train_dataset, batch_size=64, shuffle=True, drop_last=True)
-    test_dataloader = data.DataLoader(
-        test_dataset, batch_size=64, shuffle=True, drop_last=True)
-
-    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=0.01)
-    loss_func = nn.BCEWithLogitsLoss()
-
-    for i in range(epoch):
-        for targets, samples in train_dataloader:
-            targets = targets.type(torch.FloatTensor).to(DEVICE)
-            samples = samples.to(DEVICE)
-            out = torch.squeeze(model(samples))
-            loss = loss_func(out, targets)
-
-            out_bool = torch.sigmoid(out) > 0.5
-            target_bool = targets > 0.5
-            pred = (out_bool == target_bool).type(torch.FloatTensor)
-            accuracy = pred.sum() / pred.numel()
-            print(f'epoch: {i}, loss: {loss}, accuracy: {accuracy}')
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-        test_accs = []
-        with torch.no_grad():
-            for targets, samples in test_dataloader:
-                targets = targets.type(torch.FloatTensor).to(DEVICE)
-                samples = samples.to(DEVICE)
-                out = torch.squeeze(model(samples))
-                loss = loss_func(out, targets)
-
-                out_bool = torch.sigmoid(out) > 0.5
-                target_bool = targets > 0.5
-                pred = (out_bool == target_bool).type(torch.FloatTensor)
-                accuracy = pred.sum() / pred.numel()
-
-                test_accs.append(accuracy)
-                print(f'TEST: epoch: {i}, loss: {loss}, accuracy: {accuracy}')
-
-                # save any that are mispredicted
-                if i == epoch - 1:
-                    for target_class, samp, pred_score in zip(targets, samples, out):
-                        pred_class = 1 if pred_score > 0 else 0
-                        if target_class != pred_class:
-                            as_ = 'cat' if pred_class == CatsDogsDataset.LABEL_CAT else 'dog'
-                            wavfile.write(f'mispred_{as_}_{pred_score:04f}.wav', 16000, samp.cpu().detach().numpy().T)
-                            print(f'misprediction ({as_}): {pred_score:04f}')
-
-        print(f'Test Accuracy: {sum(test_accs) / len(test_accs)}')
-
-    # save module
-    print('Saving model')
-    torch.save(model.module.state_dict(), 'model.pt')

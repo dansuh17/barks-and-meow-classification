@@ -1,7 +1,7 @@
 import torch
 from torch import optim
 import sys
-from cats_and_dogs import CatsDogsModel3
+from bark_meow.train import CatsDogsModel3
 import numpy as np
 import matplotlib.pyplot as plt
 import librosa
