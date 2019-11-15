@@ -379,6 +379,15 @@ class DenseTransitionLayer1d(nn.Sequential):
 
 
 class CatsDogsDenseNet(nn.Module):
+    """
+    >>> dummy_input = torch.randn(5, 1, 16000)
+    >>> dummy_input.size()
+    torch.Size([5, 1, 16000])
+    >>> net = CatsDogsDenseNet()
+    >>> test_output = net(dummy_input)
+    >>> test_output.size()
+    torch.Size([5, 1])
+    """
     def __init__(self):
         super().__init__()
         # conv - norm - relu - pool
@@ -424,6 +433,9 @@ class CatsDogsDenseNet(nn.Module):
 
 
 if __name__ == '__main__':
+    import doctest
+    doctest.testmod()
+
     dummy = torch.randn(5, 1, 16000)
     net = CatsDogsDenseNet()
     output = net(dummy)
