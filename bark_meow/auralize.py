@@ -1,7 +1,7 @@
 import torch
 from torch import optim
 import sys
-from .model import CatsDogsModel3
+from .model import CatsDogsModel3, CatsDogsModel
 import numpy as np
 import matplotlib.pyplot as plt
 import librosa.display
@@ -9,7 +9,7 @@ from scipy.io import wavfile
 
 
 def auralize(model_file='model.pt', iterate=200, is_cat=True):
-    model = CatsDogsModel3()
+    model = CatsDogsModel()
     model.load_state_dict(torch.load(model_file, map_location='cpu'))
     model.eval()
 
@@ -46,38 +46,40 @@ def auralize(model_file='model.pt', iterate=200, is_cat=True):
 
 
 if __name__ == '__main__':
-    cat_samp, _ = librosa.load('cat_180.wav')
-    plt.figure(figsize=(4, 8))
-    D = librosa.amplitude_to_db(np.abs(librosa.stft(cat_samp)), ref=np.max)
-    plt.subplot(1, 1, 1)
-    librosa.display.specshow(D, x_axis='time', y_axis='log')
-    plt.title('cat')
-    plt.show()
+    auralize(is_cat=False)
 
-    dog_samp, _ = librosa.load('dog_180.wav')
-    plt.figure(figsize=(4, 8))
-    D = librosa.amplitude_to_db(np.abs(librosa.stft(dog_samp)), ref=np.max)
-    plt.subplot(1, 1, 1)
-    librosa.display.specshow(D, x_axis='time', y_axis='log')
-    plt.title('dog')
-    plt.show()
+    # cat_samp, _ = librosa.load('cat_180.wav')
+    # plt.figure(figsize=(4, 8))
+    # D = librosa.amplitude_to_db(np.abs(librosa.stft(cat_samp)), ref=np.max)
+    # plt.subplot(1, 1, 1)
+    # librosa.display.specshow(D, x_axis='time', y_axis='log')
+    # plt.title('cat')
+    # plt.show()
 
-    sys.exit(1)
+    # dog_samp, _ = librosa.load('dog_180.wav')
+    # plt.figure(figsize=(4, 8))
+    # D = librosa.amplitude_to_db(np.abs(librosa.stft(dog_samp)), ref=np.max)
+    # plt.subplot(1, 1, 1)
+    # librosa.display.specshow(D, x_axis='time', y_axis='log')
+    # plt.title('dog')
+    # plt.show()
 
-    params = list(model.parameters())
-    num_params = len(params)
+    # sys.exit(1)
 
-    print(params[2].size())
-    sys.exit(1)
+    # params = list(model.parameters())
+    # num_params = len(params)
 
-    print(np.squeeze(params[1].detach().numpy()))
+    # print(params[2].size())
+    # sys.exit(1)
 
-    for p in np.squeeze(params[1].detach().numpy()):
-        plt.figure()
-        plt.imshow(p)
-        plt.show()
+    # print(np.squeeze(params[1].detach().numpy()))
 
-    # for i, p in enumerate(filter(lambda p: len(p.size()) <= 2, params)):
+    # for p in np.squeeze(params[1].detach().numpy()):
     #     plt.figure()
-    #     plt.plot(p.detach().numpy())
+    #     plt.imshow(p)
     #     plt.show()
+
+    # # for i, p in enumerate(filter(lambda p: len(p.size()) <= 2, params)):
+    # #     plt.figure()
+    # #     plt.plot(p.detach().numpy())
+    # #     plt.show()

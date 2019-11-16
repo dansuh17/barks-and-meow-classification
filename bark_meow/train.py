@@ -2,7 +2,7 @@ import torch
 from torch import nn, optim
 from torch.utils import data
 from scipy.io import wavfile
-from .model import CatsDogsDenseNet
+from .model import CatsDogsDenseNet, CatsDogsModel
 from .dataset import BarkMeowDB
 
 AUDIO_DIR = './barkmeow_db'
@@ -13,7 +13,7 @@ if __name__ == '__main__':
     lr = 3e-4
     epoch = 200
 
-    model = nn.DataParallel(CatsDogsDenseNet()).to(DEVICE)
+    model = nn.DataParallel(CatsDogsModel()).to(DEVICE)
 
     dataset = BarkMeowDB(AUDIO_DIR)
     num_data = len(dataset)
