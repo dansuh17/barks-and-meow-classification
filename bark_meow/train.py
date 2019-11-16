@@ -1,32 +1,37 @@
-import os
 import torch
 from torch import nn, optim
 from torch.utils import data
 from scipy.io import wavfile
 from .model import CatsDogsDenseNet
-from .dataset import CatsDogsDataset
+from .dataset import BarkMeowDB
 
-INPUT_ROOT = '../input'
-TRAIN_TEST_SPLIT_CSV = os.path.join(INPUT_ROOT, 'train_test_split.csv')
-AUDIO_DIR = os.path.join(INPUT_ROOT, 'cats_dogs')
+AUDIO_DIR = './barkmeow_db'
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-print(os.listdir("../input"))
 
 
 if __name__ == '__main__':
-    lr = 1e-4
+    lr = 3e-4
     epoch = 200
 
     model = nn.DataParallel(CatsDogsDenseNet()).to(DEVICE)
 
-    train_dataset = CatsDogsDataset(AUDIO_DIR, TRAIN_TEST_SPLIT_CSV, True)
-    test_dataset = CatsDogsDataset(AUDIO_DIR, TRAIN_TEST_SPLIT_CSV, False)
+    dataset = BarkMeowDB(AUDIO_DIR)
+    num_data = len(dataset)
+    num_train = int(num_data * 0.9)
 
+    all_indices = list(range(num_data))
     train_dataloader = data.DataLoader(
-        train_dataset, batch_size=64, shuffle=True, drop_last=True)
+        dataset,
+        batch_size=10,
+        sampler=data.sampler.SubsetRandomSampler(all_indices[:num_train]),
+        pin_memory=True,
+        drop_last=True)
     test_dataloader = data.DataLoader(
-        test_dataset, batch_size=64, shuffle=True, drop_last=True)
+        dataset,
+        batch_size=5,
+        sampler=data.sampler.SubsetRandomSampler(all_indices[num_train:]),
+        pin_memory=True,
+        drop_last=True)
 
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=0.01)
     loss_func = nn.BCEWithLogitsLoss()
@@ -69,7 +74,7 @@ if __name__ == '__main__':
                     for target_class, samp, pred_score in zip(targets, samples, out):
                         pred_class = 1 if pred_score > 0 else 0
                         if target_class != pred_class:
-                            as_ = 'cat' if pred_class == CatsDogsDataset.LABEL_CAT else 'dog'
+                            as_ = dataset.class_label_name[pred_class]
                             wavfile.write(f'mispred_{as_}_{pred_score:04f}.wav', 16000, samp.cpu().detach().numpy().T)
                             print(f'misprediction ({as_}): {pred_score:04f}')
 
