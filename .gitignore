@@ -15,6 +15,7 @@ venv/
 ## pytorch
 # model files
 *.pt
+data_out/
 
 ## kaggle
 kernel-metadata.json
