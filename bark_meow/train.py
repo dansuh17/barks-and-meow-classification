@@ -14,7 +14,8 @@ LOG_DIR = os.path.join(DATA_OUT_ROOT, 'logs')
 MODEL_PATH = os.path.join(DATA_OUT_ROOT, 'model.pt')
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 LR = 3e-4
-EPOCH = 200
+EPOCH = 100
+SAMPLE_RATE = 16000  # sample rate to save audio for mispredicted examples
 
 
 if __name__ == '__main__':
@@ -71,7 +72,6 @@ if __name__ == '__main__':
         avg_loss = sum(losses) / len(losses)
         avg_acc = sum(accs) / len(accs)
         print(f'epoch: {i}, loss: {avg_loss}, accuracy: {avg_acc}')
-
         writer.add_scalar('train/loss', avg_loss, global_step=i)
         writer.add_scalar('train/accuracy', avg_acc, global_step=i)
 
@@ -92,14 +92,21 @@ if __name__ == '__main__':
                 test_accs.append(accuracy.data)
                 test_losses.append(loss.data)
 
-                # save any that are mispredicted
+                # save any that are mispredicted at the end of training
                 if i == EPOCH - 1:
                     for target_class, samp, pred_score in zip(targets, samples, out):
                         pred_class = 1 if pred_score > 0 else 0
                         if target_class != pred_class:
+                            # misclassified class name
                             as_ = dataset.class_label_name[pred_class]
-                            wavfile.write(f'mispred_{as_}_{pred_score:04f}.wav', 16000, samp.cpu().detach().numpy().T)
-                            print(f'misprediction ({as_}): {pred_score:04f}')
+
+                            fname = f'mispred_as_{as_}_{pred_score:04f}.wav'
+                            mispred_path = os.path.join(DATA_OUT_ROOT, fname)
+                            audio_data = samp.cpu().detach().numpy().T
+
+                            # save misclassified audio
+                            wavfile.write(mispred_path, SAMPLE_RATE, audio_data)
+                            print(f'mispredicted (as: {as_}): {pred_score:04f}')
 
         avg_test_acc = sum(test_accs) / len(test_accs)
         avg_test_loss = sum(test_losses) / len(test_losses)
