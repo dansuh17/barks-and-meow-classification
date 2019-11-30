@@ -5,7 +5,7 @@ import numpy as np
 
 
 def preprocess_audio(root_dir: str, out_dir: str,
-                     target_sr=16000, chunk_size=16000, silence_threshold_rms=0.01):
+                     target_sr=16000, chunk_size=16000, hop_size=8000, silence_threshold_rms=0.01):
     """
     Preprocess audio files in one directory and produce a new dataset in another.
     Resamples to provided target sample rate and
@@ -15,6 +15,7 @@ def preprocess_audio(root_dir: str, out_dir: str,
     :param str out_dir: output directory
     :param int target_sr: target sample rate
     :param int chunk_size: chunk length in samples
+    :param int hop_size: hop size in number of samples
     :param float silence_threshold_rms: RMS threshold for silence detection
     """
     if not os.path.exists(out_dir):
@@ -37,7 +38,7 @@ def preprocess_audio(root_dir: str, out_dir: str,
             audio_data, _ = librosa.load(full_path, sr=target_sr)
             num_samples = len(audio_data)
 
-            for i, start_idx in enumerate(range(0, num_samples, chunk_size)):
+            for i, start_idx in enumerate(range(0, num_samples, hop_size)):
                 end_idx = start_idx + chunk_size
                 # ignore if there are not enough samples
                 if end_idx >= num_samples:
@@ -58,4 +59,4 @@ def preprocess_audio(root_dir: str, out_dir: str,
 
 
 if __name__ == '__main__':
-    preprocess_audio('/Users/dansuh/datasets/environmental-sound-classification-50/dogs_cats', './barkmeow_db')
+    preprocess_audio('../datasets/barkmeow', './barkmeow_db')

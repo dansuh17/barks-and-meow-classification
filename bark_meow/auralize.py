@@ -1,10 +1,8 @@
 import torch
 from torch import optim
-import sys
 from .model import CatsDogsModel3, CatsDogsModel
 import numpy as np
 import matplotlib.pyplot as plt
-import librosa.display
 from scipy.io import wavfile
 
 
@@ -46,7 +44,7 @@ def auralize(model_file='model.pt', iterate=200, is_cat=True):
 
 
 if __name__ == '__main__':
-    auralize(is_cat=False)
+    auralize(model_file='data_out/model.pt', is_cat=False)
 
     # cat_samp, _ = librosa.load('cat_180.wav')
     # plt.figure(figsize=(4, 8))
