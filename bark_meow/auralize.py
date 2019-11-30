@@ -33,8 +33,9 @@ def auralize(model_file='model.pt', iterate=200, is_cat=True):
         optimizer.zero_grad()
         class_loss.backward()
         optimizer.step()
-        print(f'loss: {class_loss}, is_cat: {is_cat}')
+        print(f'loss: {class_loss.data}, is_cat: {is_cat}')
 
+        # TODO: save the waveform as well as the spectrogram as images
         if i % 20 == 0:
             plt.figure()
             plt.plot(np.squeeze(initial_image.detach().numpy()))
@@ -44,7 +45,7 @@ def auralize(model_file='model.pt', iterate=200, is_cat=True):
 
 
 if __name__ == '__main__':
-    auralize(model_file='data_out/model.pt', is_cat=False)
+    auralize(model_file='data_out/model.pt', is_cat=True)
 
     # cat_samp, _ = librosa.load('cat_180.wav')
     # plt.figure(figsize=(4, 8))
