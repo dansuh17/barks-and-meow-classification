@@ -1,6 +1,6 @@
 import torch
 from torch import optim
-from .model import CatsDogsModel3, CatsDogsModel
+from .model import CatsDogsModel
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import wavfile
