@@ -21,4 +21,5 @@ data_out/
 kernel-metadata.json
 
 # MAC OS
-._DS_Store
+.DS_Store
+
