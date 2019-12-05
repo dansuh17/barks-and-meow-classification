@@ -17,7 +17,7 @@ def load_model(model_file='model.pt'):
     """
     model = CatsDogsModel()
     model.load_state_dict(torch.load(model_file, map_location='cpu'))
-    model.eval()
+    model.eval()  # fix as evaluation mode
     return model
 
 
@@ -103,6 +103,10 @@ def save_spectrogram(audio_path: str, out_path: str):
 if __name__ == '__main__':
     pretrained_model_path = 'data_out/model.pt'
     model = load_model(pretrained_model_path)
+
+    # fix random seed to make auralized examples deterministic
+    torch.manual_seed(191)
+    np.random.seed(83890)
 
     auralize(model=model, is_cat=True, out_path='data_out/auralized')
     auralize(model=model, is_cat=False, out_path='data_out/auralized')

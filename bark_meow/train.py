@@ -4,6 +4,7 @@ import torch
 from torch import nn, optim
 from torch.utils import data
 from torch.utils.tensorboard import SummaryWriter
+import numpy as np
 from scipy.io import wavfile
 from .model import CatsDogsModel
 from .dataset import BarkMeowDB
@@ -16,6 +17,10 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 LR = 3e-4
 EPOCH = 100
 SAMPLE_RATE = 16000  # sample rate to save audio for mispredicted examples
+
+# fix random seed to make the training deterministic
+torch.manual_seed(8912)
+np.random.seed(9912)
 
 
 if __name__ == '__main__':
