@@ -11,19 +11,34 @@ from .model import CatsDogsModel
 
 def load_model(model_file='model.pt'):
     """
-    Loads a pretrained model.
+    Loads a pre-trained model.
 
-    @param model_file: path to pretrained model file
+    Args:
+        model_file (str): path to model file - usually has extension '.pt'
+
+    Returns:
+        model (torch.nn.Module): model instance in evaluation mode
     """
-    model = CatsDogsModel()
+    model: torch.nn.Module = CatsDogsModel()
     model.load_state_dict(torch.load(model_file, map_location='cpu'))
     model.eval()  # fix as evaluation mode
     return model
 
 
-def auralize(model, is_cat: bool, out_path: str, n_iter=5000, samp_rate=16000):
+def auralize(model, is_cat: bool, out_path: str, n_iter=5000, samp_rate=16000, lr=0.01):
     """
     Find the best signal that would lead to highest probability to the provided class.
+
+    Args:
+        model (torch.nn.Module): pre-trained model instance
+        is_cat (bool): ``True`` if you want to generate a cat sound, ``False`` for a dog sound
+        out_path (str): output path for generated audio and images
+        n_iter (int): number of iterations
+        samp_rate (int): audio sample rate
+        lr (float): learning rate
+
+    Returns:
+        auralized (torch.FloatTensor): generated audio signal
     """
     # create output directories if they don't exist
     img_out_dir = os.path.join(out_path, 'img')
@@ -39,8 +54,7 @@ def auralize(model, is_cat: bool, out_path: str, n_iter=5000, samp_rate=16000):
     initial_signal = torch.rand((1, 1, samp_rate))  # 1-sec of random samples
     # allow parameter updates from back-propagation
     initial_signal.requires_grad = True
-    # optimizer = optim.SGD([initial_signal], lr=5, weight_decay=0.05)
-    optimizer = optim.SGD([initial_signal], lr=0.01, weight_decay=0.05)
+    optimizer = optim.SGD([initial_signal], lr=lr, weight_decay=0.05)
 
     target_name = 'cat' if is_cat else 'dog'
 
@@ -82,13 +96,19 @@ def auralize(model, is_cat: bool, out_path: str, n_iter=5000, samp_rate=16000):
     return auralized
 
 
-def save_spectrogram(audio_path: str, out_path: str):
+def save_spectrogram(audio_path: str, out_path: str, n_fft=512, hop_length=128):
     """
     Saves the spectrogram of the provided audio file.
+
+    Args:
+        audio_path (str): path to audio file
+        out_path (str): output directory
+        n_fft (int): number of FFT kernels
+        hop_length (int): hop size
     """
     audio_samp, _ = librosa.load(audio_path)
     plt.figure(figsize=(4, 8))
-    mag_spec = np.abs(librosa.stft(audio_samp, n_fft=512, hop_length=128))
+    mag_spec = np.abs(librosa.stft(audio_samp, n_fft=n_fft, hop_length=hop_length))
     D = librosa.amplitude_to_db(mag_spec, ref=np.max)
     plt.subplot(1, 1, 1)
     librosa.display.specshow(D, x_axis='time')
