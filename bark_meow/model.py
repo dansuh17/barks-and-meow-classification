@@ -3,6 +3,62 @@ import torch
 from torch import nn
 
 
+class CatsDogsModel(nn.Module):
+    """
+    >>> dummy_input = torch.randn(5, 1, 16000)
+    >>> dummy_input.size()
+    torch.Size([5, 1, 16000])
+    >>> net = CatsDogsModel()
+    >>> test_output = net(dummy_input)
+    >>> test_output.size()
+    torch.Size([5, 1])
+    """
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Conv1d(in_channels=1, out_channels=8, kernel_size=3, stride=2, bias=False),
+            nn.BatchNorm1d(8),
+            nn.ReLU(inplace=True),
+
+            nn.Conv1d(in_channels=8, out_channels=8, kernel_size=3, stride=2, bias=False),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm1d(8),
+            nn.Dropout(0.5),
+
+            nn.Conv1d(in_channels=8, out_channels=8, kernel_size=3, stride=2, bias=False),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm1d(8),
+            nn.Dropout(0.5),
+
+            nn.Conv1d(in_channels=8, out_channels=16, kernel_size=3, stride=2, bias=False),
+            nn.ReLU(inplace=True),
+            nn.BatchNorm1d(16),
+            nn.Dropout(0.5),
+
+            nn.Conv1d(in_channels=16, out_channels=1, kernel_size=3, stride=3, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+        )
+        self.linear = nn.Sequential(
+            nn.Linear(in_features=333, out_features=100),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+            nn.Linear(100, 1),
+        )
+
+        self.apply(self.init_weights)
+
+    def forward(self, x):
+        x = self.net(x)
+        x = x.view(-1, 333)
+        return self.linear(x)
+
+    @staticmethod
+    def init_weights(m):
+        if isinstance(m, nn.Conv1d):
+            nn.init.kaiming_normal_(m.weight)
+
+
 class CatsDogsModel2(nn.Module):
     """
     >>> dummy_input = torch.randn(5, 1, 16000)
@@ -62,62 +118,6 @@ class CatsDogsModel2(nn.Module):
     def forward(self, x):
         x = self.net(x)
         x = x.view(-1, 108)
-        return self.linear(x)
-
-    @staticmethod
-    def init_weights(m):
-        if isinstance(m, nn.Conv1d):
-            nn.init.kaiming_normal_(m.weight)
-
-
-class CatsDogsModel(nn.Module):
-    """
-    >>> dummy_input = torch.randn(5, 1, 16000)
-    >>> dummy_input.size()
-    torch.Size([5, 1, 16000])
-    >>> net = CatsDogsModel()
-    >>> test_output = net(dummy_input)
-    >>> test_output.size()
-    torch.Size([5, 1])
-    """
-    def __init__(self):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Conv1d(in_channels=1, out_channels=8, kernel_size=3, stride=2, bias=False),
-            nn.BatchNorm1d(8),
-            nn.ReLU(inplace=True),
-
-            nn.Conv1d(in_channels=8, out_channels=8, kernel_size=3, stride=2, bias=False),
-            nn.ReLU(inplace=True),
-            nn.BatchNorm1d(8),
-            nn.Dropout(0.5),
-
-            nn.Conv1d(in_channels=8, out_channels=8, kernel_size=3, stride=2, bias=False),
-            nn.ReLU(inplace=True),
-            nn.BatchNorm1d(8),
-            nn.Dropout(0.5),
-
-            nn.Conv1d(in_channels=8, out_channels=16, kernel_size=3, stride=2, bias=False),
-            nn.ReLU(inplace=True),
-            nn.BatchNorm1d(16),
-            nn.Dropout(0.5),
-
-            nn.Conv1d(in_channels=16, out_channels=1, kernel_size=3, stride=3, bias=False),
-            nn.ReLU(inplace=True),
-            nn.Dropout(0.5),
-        )
-        self.linear = nn.Sequential(
-            nn.Linear(in_features=333, out_features=100),
-            nn.ReLU(inplace=True),
-            nn.Dropout(0.5),
-            nn.Linear(100, 1),
-        )
-
-        self.apply(self.init_weights)
-
-    def forward(self, x):
-        x = self.net(x)
-        x = x.view(-1, 333)
         return self.linear(x)
 
     @staticmethod
@@ -464,8 +464,6 @@ class CatsDogsDenseNet(nn.Module):
             nn.init.constant_(m.bias, 0)
         elif isinstance(m, nn.Linear):
             nn.init.constant_(m.bias, 0)
-
-# TODO: densenet, squeeze-and-excite, shift-invariant networks
 
 
 if __name__ == '__main__':

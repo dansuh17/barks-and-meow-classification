@@ -11,17 +11,22 @@ def preprocess_audio(root_dir: str, out_dir: str,
     Resamples to provided target sample rate and
     splits into chunks of provided chunk size.
 
-    :param str root_dir: root directory of the original audio data
-    :param str out_dir: output directory
-    :param int target_sr: target sample rate
-    :param int chunk_size: chunk length in samples
-    :param int hop_size: hop size in number of samples
-    :param float silence_threshold_rms: RMS threshold for silence detection
+    Args:
+        root_dir (str): root directory of the original audio data
+        out_dir (str): output directory
+        target_sr (int): target sample rate
+        chunk_size (int): chunk length in samples
+        hop_size (int): hop size in number of samples
+        silence_threshold_rms (float): RMS threshold for silence detection
+
+    Returns:
+
     """
     if not os.path.exists(out_dir):
         print(f'Creating directory: {out_dir}')
         os.mkdir(out_dir)
 
+    dst_files = []
     for root, _, files in os.walk(root_dir):
         rel_path = os.path.relpath(root, root_dir)
         target_dir = os.path.join(out_dir, rel_path)
@@ -56,7 +61,9 @@ def preprocess_audio(root_dir: str, out_dir: str,
 
                 print(f'Writing: {dst_path}')
                 wavfile.write(filename=dst_path, rate=target_sr, data=samples_chunk)
+                dst_files.append(dst_path)
+    return dst_files
 
 
 if __name__ == '__main__':
-    preprocess_audio('../datasets/barkmeow', './barkmeow_db')
+    dst_files = preprocess_audio('../datasets/barkmeow', './barkmeow_db')
