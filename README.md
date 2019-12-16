@@ -19,6 +19,13 @@ is used for training.
 - [Download from zenodo.org](https://zenodo.org/record/3563990#.Xesx_JMzZ25)
 
 # Model
-The neural network model is a simple convolutional neural network (CNN) using 1D kernels.
+The neural network model is a simple convolutional neural network (CNN) using 5 1D convolution kernels.
 
 # Auralization
+
+Auralization uses a technique called **gradient ascent** to render an input that maximizes the probability for a given label.
+Look in the directory `auralize_examples/` for auralization results.
+
+# Further details
+
+For more details, visit my [blog post about barks vs meows classification](https://dansuh17.github.io/2019/12/16/bark-meow.html).
